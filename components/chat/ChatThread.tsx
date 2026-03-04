@@ -23,6 +23,9 @@ import { useSessionStorage } from '@/hooks/use-session-storage';
 import { INITIAL_MESSAGE_KEY, type InitialMessageData } from '@/constants/chat';
 import { useUser } from '@/context/UserContext';
 import { useSearchParams } from 'next/navigation';
+import { usePushSubscription } from '@/hooks/use-push-subscription';
+import { NotificationPrompt } from '@/components/chat/NotificationPrompt';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 /** Header name for passing user ID to API */
 const USER_ID_HEADER = 'x-user-id';
@@ -34,6 +37,7 @@ interface ChatThreadProps {
 export function ChatThread({ id }: ChatThreadProps) {
     const { userId: clerkUserId, isLoaded: isAuthLoaded } = useAuth();
     const { guestId } = useUser();
+    const isMobile = useIsMobile();
 
     const userId = clerkUserId ?? guestId;
 
@@ -111,6 +115,8 @@ export function ChatThread({ id }: ChatThreadProps) {
     const hasMessages = messages.length > 0;
     const isLoading = isLoadingMessages && !didLoad.current;
 
+    const pushSubscription = usePushSubscription(userId);
+
     const lastAssistantMessage = messages.filter((m) => m.role === 'assistant').at(-1);
     const { suggestions: suggestionsFromTool, loading: suggestionsLoading } = useMemo(() => {
         if (!lastAssistantMessage) return { suggestions: undefined, loading: false };
@@ -180,6 +186,13 @@ export function ChatThread({ id }: ChatThreadProps) {
                             </div>
                         )}
                         <InputSection onSubmit={handleSend} status={status} onStop={stop} />
+                        <NotificationPrompt
+                            isSupported={pushSubscription.isSupported}
+                            isSubscribed={pushSubscription.isSubscribed}
+                            subscribe={pushSubscription.subscribe}
+                            unsubscribe={pushSubscription.unsubscribe}
+                            hasMessages={hasMessages}
+                        />
                         {!!totalTokens && totalTokens > 0 && (
                             <ContextWindowIndicator
                                 usedTokens={totalTokens}
@@ -190,7 +203,7 @@ export function ChatThread({ id }: ChatThreadProps) {
                 </div>
             </div>
 
-            {process.env.NODE_ENV === 'development' && (
+            {process.env.NODE_ENV === 'development' && !isMobile && (
                 <AIDevtools
                     enabled
                     maxEvents={1000}

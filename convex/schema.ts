@@ -76,6 +76,7 @@ export default defineSchema({
         firstName: v.optional(v.string()),
         lastName: v.optional(v.string()),
         imageUrl: v.optional(v.string()),
+        role: v.optional(v.union(v.literal('admin'), v.literal('user'))),
         themePreference: v.optional(v.union(v.literal('light'), v.literal('dark'))),
         createdAt: v.number(),
         updatedAt: v.number(),
@@ -116,6 +117,34 @@ export default defineSchema({
         .index('by_thread', ['threadId'])
         .index('by_thread_created', ['threadId', 'createdAt'])
         .index('by_user', ['userId']),
+
+    /**
+     * Push subscriptions table - stores Web Push subscription endpoints per user.
+     * Keyed by userId (Clerk ID or guest session ID) and endpoint (unique per device/browser).
+     * Used by `lib/push/send-notification.ts` to fan out push notifications.
+     */
+    push_subscriptions: defineTable({
+        userId: v.string(),
+        endpoint: v.string(),
+        keys: v.object({
+            p256dh: v.string(),
+            auth: v.string(),
+        }),
+        createdAt: v.number(),
+    })
+        .index('by_user_id', ['userId'])
+        .index('by_endpoint', ['endpoint']),
+
+    /**
+     * AI Models table - stores per-agent model configuration for runtime overrides.
+     * Admins can change which model each agent uses without redeployment.
+     */
+    ai_models: defineTable({
+        agentId: v.string(),
+        modelId: v.string(),
+        updatedAt: v.number(),
+        updatedBy: v.string(),
+    }).index('by_agent_id', ['agentId']),
 
     /**
      * Mastra tables - used by @mastra/convex for agent memory, threads, and storage
