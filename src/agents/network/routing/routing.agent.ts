@@ -25,7 +25,7 @@ import { TruncateToolResultsProcessor } from '../../processors/truncate-tool-res
 import { ENV } from '@/lib/env';
 
 /** Fast, cheap model for security classification processors */
-const GUARD_MODEL = 'openrouter/google/gemini-2.5-flash-lite-preview-09-2025';
+const GUARD_MODEL = 'openrouter/google/gemini-2.5-flash-lite';
 
 const { MEMORY } = AgentConfig;
 
