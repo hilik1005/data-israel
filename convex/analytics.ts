@@ -9,7 +9,7 @@
  *       createdAt in thread_billing is a Unix ms number.
  */
 
-import { query } from './_generated/server';
+import { query, type QueryCtx } from './_generated/server';
 import { v } from 'convex/values';
 
 // ---------------------------------------------------------------------------
@@ -104,6 +104,12 @@ function isMainThread(thread: Record<string, unknown>): boolean {
     );
 }
 
+/** Get the current authenticated user's resourceId (Clerk subject) to exclude from stats. */
+async function getCallerResourceId(ctx: QueryCtx): Promise<string | null> {
+    const identity = await ctx.auth.getUserIdentity();
+    return identity?.subject ?? null;
+}
+
 // ---------------------------------------------------------------------------
 // getOverviewStats
 // ---------------------------------------------------------------------------
@@ -132,8 +138,9 @@ export const getOverviewStats = query({
     },
     handler: async (ctx, { sinceTimestamp }): Promise<OverviewStats> => {
         const sinceIso = sinceTimestamp !== undefined ? toIsoString(sinceTimestamp) : undefined;
+        const callerResourceId = await getCallerResourceId(ctx);
 
-        // --- Threads in range (main threads only, excluding sub-agent & internal) ---
+        // --- Threads in range (main threads only, excluding sub-agent, internal & current admin) ---
         const allThreads =
             sinceIso !== undefined
                 ? await ctx.db
@@ -142,7 +149,9 @@ export const getOverviewStats = query({
                       .collect()
                 : await ctx.db.query('mastra_threads').collect();
 
-        const threads = allThreads.filter(isMainThread);
+        const threads = allThreads.filter(
+            (t) => isMainThread(t) && t.resourceId !== callerResourceId,
+        );
         const totalThreads = threads.length;
 
         // --- Count messages from thread_usage (lightweight) instead of mastra_messages ---
@@ -275,6 +284,7 @@ export const getThreadOrigins = query({
     },
     handler: async (ctx, { sinceTimestamp }): Promise<ThreadOriginEntry[]> => {
         const sinceIso = sinceTimestamp !== undefined ? toIsoString(sinceTimestamp) : undefined;
+        const callerResourceId = await getCallerResourceId(ctx);
 
         const allThreads =
             sinceIso !== undefined
@@ -284,7 +294,9 @@ export const getThreadOrigins = query({
                       .collect()
                 : await ctx.db.query('mastra_threads').collect();
 
-        const threads = allThreads.filter(isMainThread);
+        const threads = allThreads.filter(
+            (t) => isMainThread(t) && t.resourceId !== callerResourceId,
+        );
 
         // Build a label→count map, initialised with all prompt card labels + free text
         const counts = new Map<string, number>(PROMPT_CARD_ENTRIES.map((c) => [c.label, 0]));
@@ -342,6 +354,7 @@ export const getThreadsOverTime = query({
     },
     handler: async (ctx, { sinceTimestamp, bucketSize }): Promise<ThreadsBucketEntry[]> => {
         const sinceIso = sinceTimestamp !== undefined ? toIsoString(sinceTimestamp) : undefined;
+        const callerResourceId = await getCallerResourceId(ctx);
 
         const allThreads =
             sinceIso !== undefined
@@ -351,7 +364,9 @@ export const getThreadsOverTime = query({
                       .collect()
                 : await ctx.db.query('mastra_threads').collect();
 
-        const threads = allThreads.filter(isMainThread);
+        const threads = allThreads.filter(
+            (t) => isMainThread(t) && t.resourceId !== callerResourceId,
+        );
 
         // Group threads by time bucket (skip empty/abandoned threads)
         const bucketCounts = new Map<string, number>();
@@ -456,6 +471,7 @@ export const getAgentDelegationBreakdown = query({
     },
     handler: async (ctx, { sinceTimestamp }): Promise<AgentDelegationEntry[]> => {
         const sinceIso = sinceTimestamp !== undefined ? toIsoString(sinceTimestamp) : undefined;
+        const callerResourceId = await getCallerResourceId(ctx);
 
         const threads =
             sinceIso !== undefined
@@ -467,11 +483,13 @@ export const getAgentDelegationBreakdown = query({
 
         // Count sub-agent threads by resourceId suffix.
         // Each sub-agent thread represents one delegation call to that agent.
+        // Exclude sub-agent threads belonging to the current admin user.
         let datagovCount = 0;
         let cbsCount = 0;
 
         for (const thread of threads) {
             const resourceId = thread.resourceId as string;
+            if (callerResourceId && resourceId.startsWith(callerResourceId)) continue;
             if (resourceId.endsWith('-datagovAgent')) {
                 datagovCount++;
             } else if (resourceId.endsWith('-cbsAgent')) {
@@ -502,6 +520,7 @@ export const getFreeTextPrompts = query({
     },
     handler: async (ctx, { sinceTimestamp }): Promise<FreeTextPromptEntry[]> => {
         const sinceIso = sinceTimestamp !== undefined ? toIsoString(sinceTimestamp) : undefined;
+        const callerResourceId = await getCallerResourceId(ctx);
 
         const allThreads =
             sinceIso !== undefined
@@ -511,7 +530,9 @@ export const getFreeTextPrompts = query({
                       .collect()
                 : await ctx.db.query('mastra_threads').collect();
 
-        const threads = allThreads.filter(isMainThread);
+        const threads = allThreads.filter(
+            (t) => isMainThread(t) && t.resourceId !== callerResourceId,
+        );
 
         // Build prompt→label lookup for detecting prompt-card messages
         const promptCardTexts = new Set(PROMPT_CARD_ENTRIES.map((c) => c.prompt));
