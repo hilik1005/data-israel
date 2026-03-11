@@ -38,7 +38,7 @@ export function UserGuestBreakdownCard({
                 <MetricRow label='סה״כ' value={total} />
                 <MetricRow label='פתחו שיחה' value={`${active} (${conversionPct}%)`} />
                 <MetricRow label='ממוצע שיחות' value={avgThreads} />
-                <MetricRow label='ממוצע הודעות' value={avgMessages} />
+                <MetricRow label='ממוצע הודעות לשיחה' value={avgMessages} />
             </div>
         </div>
     );

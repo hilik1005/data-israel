@@ -182,16 +182,19 @@ export const getOverviewStats = query({
         const activeResourceIds = new Set(threads.map((t) => t.resourceId));
         const uniqueActiveUsers = activeResourceIds.size;
 
-        // --- Total registered users & guests (all-time counts) ---
+        // --- Total registered users & guests (all-time counts, excluding current admin) ---
         const allUsers = await ctx.db.query('users').collect();
         const allGuests = await ctx.db.query('guests').collect();
-        const totalRegisteredUsers = allUsers.length;
+        const filteredUsers = callerResourceId
+            ? allUsers.filter((u) => u.clerkId !== callerResourceId)
+            : allUsers;
+        const totalRegisteredUsers = filteredUsers.length;
         const totalGuests = allGuests.length;
 
         // --- Classify active resourceIds as registered vs guest ---
         // Registered users: their resourceId matches a clerkId in the users table.
         // Guests: their resourceId matches a sessionId in the guests table.
-        const registeredClerkIds = new Set(allUsers.map((u) => u.clerkId));
+        const registeredClerkIds = new Set(filteredUsers.map((u) => u.clerkId));
         const guestSessionIds = new Set(allGuests.map((g) => g.sessionId));
 
         const registeredActiveIds = new Set<string>();
@@ -218,12 +221,17 @@ export const getOverviewStats = query({
         // --- Per-user averages (thread counts split by user type, including empty) ---
         let registeredThreadCount = 0;
         let guestThreadCount = 0;
+        let registeredActiveThreadCount = 0;
+        let guestActiveThreadCount = 0;
 
         for (const thread of threads) {
+            const isActive = activeThreads.includes(thread);
             if (registeredClerkIds.has(thread.resourceId)) {
                 registeredThreadCount++;
+                if (isActive) registeredActiveThreadCount++;
             } else {
                 guestThreadCount++;
+                if (isActive) guestActiveThreadCount++;
             }
         }
 
@@ -242,10 +250,11 @@ export const getOverviewStats = query({
             registeredActiveIds.size > 0 ? Math.round((registeredThreadCount / registeredActiveIds.size) * 10) / 10 : 0;
         const avgThreadsPerGuest =
             guestActiveIds.size > 0 ? Math.round((guestThreadCount / guestActiveIds.size) * 10) / 10 : 0;
+        // Per-thread averages (messages / active threads) per user type — consistent with the KPI
         const avgMessagesPerUser =
-            registeredActiveIds.size > 0 ? Math.round((registeredMsgSum / registeredActiveIds.size) * 10) / 10 : 0;
+            registeredActiveThreadCount > 0 ? Math.round((registeredMsgSum / registeredActiveThreadCount) * 10) / 10 : 0;
         const avgMessagesPerGuest =
-            guestActiveIds.size > 0 ? Math.round((guestMsgSum / guestActiveIds.size) * 10) / 10 : 0;
+            guestActiveThreadCount > 0 ? Math.round((guestMsgSum / guestActiveThreadCount) * 10) / 10 : 0;
         const activeThreadCount = activeThreads.length;
         const avgMessagesPerThread = activeThreadCount > 0 ? Math.round((totalMessages / activeThreadCount) * 10) / 10 : 0;
 
