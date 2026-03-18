@@ -1,122 +1,255 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
-import { ChevronDown, Github } from 'lucide-react';
-import { StarsBackground } from '@/components/animate-ui/components/backgrounds/stars';
-import { HeroSection } from '@/components/chat/HeroSection';
-import { SourcesSection } from '@/components/landing/SourcesSection';
-import { HowItWorksSection } from '@/components/landing/HowItWorksSection';
-import { AboutSection } from '@/components/landing/AboutSection';
-import { ContactSection } from '@/components/landing/ContactSection';
-import { Footer } from '@/components/landing/Footer';
-import { ScrollToTop } from '@/components/ui/ScrollToTop';
-import { AmbientGlow } from '@/components/ui/AmbientGlow';
+import { useMemo, useState } from 'react';
+
+type DocItem = {
+  id: number;
+  title: string;
+  type: string;
+  year: number;
+  date: string;
+  topic: string;
+  summary: string;
+  keywords: string[];
+  source_url: string;
+  full_text: string;
+};
+
+const documents: DocItem[] = [
+  {
+    id: 1,
+    title: 'הוראת ביצוע 4/2024 - ניכוי מס במקור',
+    type: 'הוראת ביצוע',
+    year: 2024,
+    date: '2024-06-10',
+    topic: 'ניכוי מס במקור',
+    summary: 'הוראות בנושא ניכוי מס במקור לעסקים ולמשלמים.',
+    keywords: ['ניכוי מס במקור', 'ניכוי', 'withholding tax'],
+    source_url: '#',
+    full_text: 'המסמך עוסק בכללים, תחולה, חריגים ודגשים מקצועיים בנושא ניכוי מס במקור.',
+  },
+  {
+    id: 2,
+    title: 'חוזר מס הכנסה 1/2025 - מחירי העברה',
+    type: 'חוזר',
+    year: 2025,
+    date: '2025-01-15',
+    topic: 'מיסוי בינלאומי',
+    summary: 'הנחיות מקצועיות בנושא מחירי העברה ודיווח.',
+    keywords: ['מחירי העברה', 'transfer pricing', 'cbc', 'cbcr'],
+    source_url: '#',
+    full_text: 'המסמך כולל הגדרות, חובות תיעוד, כללי דיווח ופרשנות מקצועית בתחום מחירי העברה.',
+  },
+  {
+    id: 3,
+    title: 'תמצית החלטת מיסוי - שינוי מבנה',
+    type: 'תמצית החלטת מיסוי',
+    year: 2023,
+    date: '2023-09-20',
+    topic: 'שינויי מבנה',
+    summary: 'תמצית החלטת מיסוי בנושא שינוי מבנה והעברת נכסים.',
+    keywords: ['החלטת מיסוי', 'רולינג', 'שינוי מבנה'],
+    source_url: '#',
+    full_text: 'המסמך כולל תנאים, עובדות מרכזיות, עמדת הרשות ותוצאת המס.',
+  },
+  {
+    id: 4,
+    title: 'תקנות מס הכנסה - נקודות זיכוי',
+    type: 'תקנות',
+    year: 2022,
+    date: '2022-03-01',
+    topic: 'זיכויים והקלות',
+    summary: 'תקנות בנושא נקודות זיכוי והוראות יישום.',
+    keywords: ['נקודות זיכוי', 'זיכוי ממס', 'ילדים'],
+    source_url: '#',
+    full_text: 'המסמך מפרט זכאות, תנאים, מנגנון חישוב והוראות יישום שונות.',
+  },
+  {
+    id: 5,
+    title: 'הנחיה מקצועית - מעמ בעסקאות שירות',
+    type: 'הנחיה',
+    year: 2024,
+    date: '2024-11-07',
+    topic: 'מעמ',
+    summary: 'הנחיה מקצועית בנושא מעמ בעסקאות שירות.',
+    keywords: ['מעמ', 'מע"מ', 'vat', 'שירותים'],
+    source_url: '#',
+    full_text: 'המסמך מסביר סיווג עסקאות, חבות מס, חריגים ודוגמאות יישומיות.',
+  },
+];
+
+const synonyms: Record<string, string[]> = {
+  'החלטת מיסוי': ['רולינג', 'תמצית החלטת מיסוי'],
+  'רולינג': ['החלטת מיסוי', 'תמצית החלטת מיסוי'],
+  'מחירי העברה': ['transfer pricing', 'cbc', 'cbcr'],
+  'נקודות זיכוי': ['זיכוי ממס', 'ילדים'],
+  'מעמ': ['מע"מ', 'vat'],
+  'מע"מ': ['מעמ', 'vat'],
+  'הוראת ביצוע': ['נוהל', 'הנחיה'],
+};
+
+function normalize(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/["'׳״]/g, '')
+    .replace(/[^\u0590-\u05FFa-z0-9\s/-]/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function expandQuery(query: string) {
+  const base = normalize(query);
+  if (!base) return [];
+
+  const terms = new Set(base.split(' ').filter(Boolean));
+
+  for (const [key, values] of Object.entries(synonyms)) {
+    const nk = normalize(key);
+    const nv = values.map(normalize);
+    if (base.includes(nk) || nv.some((v) => base.includes(v))) {
+      terms.add(nk);
+      nv.forEach((v) => terms.add(v));
+    }
+  }
+
+  return [...terms];
+}
+
+function scoreDoc(doc: DocItem, terms: string[]) {
+  const title = normalize(doc.title);
+  const type = normalize(doc.type);
+  const topic = normalize(doc.topic);
+  const summary = normalize(doc.summary);
+  const keywords = normalize(doc.keywords.join(' '));
+  const fullText = normalize(doc.full_text);
+  const year = String(doc.year);
+
+  let score = 0;
+
+  for (const term of terms) {
+    if (title.includes(term)) score += 50;
+    if (type.includes(term)) score += 30;
+    if (topic.includes(term)) score += 25;
+    if (keywords.includes(term)) score += 20;
+    if (summary.includes(term)) score += 12;
+    if (fullText.includes(term)) score += 8;
+    if (year === term) score += 35;
+  }
+
+  return score;
+}
 
 export default function Home() {
-    const router = useRouter();
-    const scrollRef = useRef<HTMLDivElement>(null);
-    const isMobile = useIsMobile();
-    const glowSize = isMobile ? 400 : 800;
-    const glowSizeSm = isMobile ? 350 : 700;
+  const [query, setQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState('הכל');
+  const [yearFilter, setYearFilter] = useState('הכל');
 
-    const handleStartConversation = () => {
-        const chatId = crypto.randomUUID();
-        router.push(`/chat/${chatId}?new`);
-    };
+  const types = ['הכל', ...Array.from(new Set(documents.map((d) => d.type)))];
+  const years = ['הכל', ...Array.from(new Set(documents.map((d) => String(d.year)))).sort((a, b) => Number(b) - Number(a))];
 
-    const handleScrollToAbout = useCallback(() => {
-        const aboutEl = document.getElementById('about');
-        aboutEl?.scrollIntoView({ behavior: 'smooth' });
-    }, []);
+  const results = useMemo(() => {
+    const terms = expandQuery(query);
 
-    return (
-        <div ref={scrollRef} className='h-full w-full overflow-y-auto overflow-x-clip'>
-            <div className='relative flex min-h-dvh flex-col items-center justify-center px-4 md:px-0'>
-                {/* GitHub link — top left corner */}
-                <a
-                    href='https://github.com/LiorVainer/data-israel'
-                    target='_blank'
-                    rel='noopener noreferrer'
-                    dir='ltr'
-                    className='absolute top-4 left-4 md:top-5 md:left-5 z-20 text-muted-foreground hover:text-foreground transition-colors'
-                    aria-label='GitHub'
-                >
-                    <Github className='size-5' />
-                </a>
-                {/* Hero glows */}
-                <AmbientGlow top='15%' left='15%' size={glowSize} />
-                <AmbientGlow top='80%' left='85%' size={glowSize} />
-                <motion.div
-                    initial={{ opacity: 0, y: 40 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{
-                        delay: 0.3,
-                        duration: 0.8,
-                        ease: 'easeInOut',
-                    }}
-                    className='relative z-10 flex flex-col gap-4 md:gap-6 w-full items-center justify-center'
-                >
-                    <HeroSection onStartConversation={handleStartConversation} onScrollToAbout={handleScrollToAbout} />
-                </motion.div>
+    return documents
+      .filter((doc) => typeFilter === 'הכל' || doc.type === typeFilter)
+      .filter((doc) => yearFilter === 'הכל' || String(doc.year) === yearFilter)
+      .map((doc) => ({ ...doc, score: scoreDoc(doc, terms) }))
+      .filter((doc) => !query.trim() || doc.score > 0)
+      .sort((a, b) => b.score - a.score || b.year - a.year);
+  }, [query, typeFilter, yearFilter]);
 
-                {/* Stars background at the bottom of hero viewport */}
-                <div className='pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[30vh] overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_40%)]'>
-                    <StarsBackground
-                        className='h-full'
-                        style={{ background: 'transparent' }}
-                        speed={80}
-                        factor={0.03}
-                        starColor='oklch(0.55 0.18 250)'
-                        pointerEvents={false}
-                    />
-                </div>
+  return (
+    <main className="min-h-screen bg-white text-slate-900" dir="rtl">
+      <div className="mx-auto max-w-6xl px-4 py-10">
+        <h1 className="text-3xl font-bold mb-2">חיפוש חכם במסמכי מס</h1>
+        <p className="text-slate-600 mb-8">
+          חיפוש בהנחיות, תקנות, הוראות ביצוע, חוזרים ותמציות החלטות מיסוי
+        </p>
 
-                {/* "Learn more" pinned to bottom of hero viewport */}
-                <motion.button
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 1.2, duration: 0.6 }}
-                    onClick={handleScrollToAbout}
-                    className='absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors'
-                >
-                    <span>קראו עוד</span>
-                    <ChevronDown className='w-4 h-4 animate-bounce' />
-                </motion.button>
-            </div>
+        <div className="grid gap-4 md:grid-cols-4 mb-8">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="חפש למשל: נקודות זיכוי, מחירי העברה, החלטת מיסוי"
+            className="md:col-span-2 rounded-xl border px-4 py-3"
+          />
 
-            {/* Below-the-fold sections — reduced top padding for smooth hero→about flow */}
-            <div className='z-10 flex flex-col pt-40 pb-16 md:pb-40 gap-32 md:gap-40 overflow-clip'>
-                <div className='relative overflow-visible'>
-                    <AmbientGlow top='30%' left='20%' size={glowSizeSm} />
-                    <AboutSection />
-                </div>
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="rounded-xl border px-4 py-3"
+          >
+            {types.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
 
-                {/* Full-bleed tinted band for Sources — gradient edges for smooth transition */}
-                <div className='relative dark:via-muted/40 overflow-visible'>
-                    <AmbientGlow top='20%' left='85%' size={glowSize} />
-                    <AmbientGlow top='50%' left='40%' size={glowSize} />
-                    <AmbientGlow top='70%' left='15%' size={glowSize} />
-                    <SourcesSection />
-                </div>
-
-                <div className='relative overflow-visible'>
-                    <AmbientGlow top='25%' left='75%' size={glowSizeSm} />
-                    <AmbientGlow top='75%' left='20%' size={glowSizeSm} />
-                    <HowItWorksSection />
-                </div>
-
-                <div className='relative overflow-visible'>
-                    <AmbientGlow top='50%' left='50%' size={glowSizeSm} />
-                    <ContactSection />
-                </div>
-            </div>
-
-            <Footer />
-
-            <ScrollToTop containerRef={scrollRef} />
+          <select
+            value={yearFilter}
+            onChange={(e) => setYearFilter(e.target.value)}
+            className="rounded-xl border px-4 py-3"
+          >
+            {years.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
         </div>
-    );
+
+        <div className="mb-6 flex flex-wrap gap-2">
+          {['החלטת מיסוי', 'מחירי העברה', 'נקודות זיכוי', 'מע"מ', 'הוראת ביצוע'].map((term) => (
+            <button
+              key={term}
+              onClick={() => setQuery(term)}
+              className="rounded-full border px-3 py-1 text-sm hover:bg-slate-50"
+            >
+              {term}
+            </button>
+          ))}
+        </div>
+
+        <div className="space-y-4">
+          {results.length === 0 ? (
+            <div className="rounded-2xl border p-6">לא נמצאו תוצאות</div>
+          ) : (
+            results.map((doc) => (
+              <article key={doc.id} className="rounded-2xl border p-5 shadow-sm">
+                <div className="mb-3 flex flex-wrap gap-2 text-sm">
+                  <span className="rounded-full bg-slate-100 px-3 py-1">{doc.type}</span>
+                  <span className="rounded-full bg-slate-100 px-3 py-1">{doc.topic}</span>
+                  <span className="rounded-full bg-slate-100 px-3 py-1">{doc.year}</span>
+                </div>
+
+                <h2 className="text-xl font-semibold mb-2">{doc.title}</h2>
+                <p className="text-slate-600 mb-3">{doc.summary}</p>
+
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {doc.keywords.map((keyword) => (
+                    <span key={keyword} className="rounded-full border px-3 py-1 text-xs">
+                      {keyword}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm text-slate-500">{doc.date}</span>
+                  <a
+                    href={doc.source_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-xl bg-slate-900 px-4 py-2 text-white"
+                  >
+                    פתח מקור
+                  </a>
+                </div>
+              </article>
+            ))
+          )}
+        </div>
+      </div>
+    </main>
+  );
 }
