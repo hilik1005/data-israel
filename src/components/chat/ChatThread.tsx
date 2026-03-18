@@ -26,6 +26,7 @@ import { useSearchParams } from 'next/navigation';
 import { usePushSubscription } from '@/hooks/use-push-subscription';
 import { NotificationPrompt } from '@/components/chat/NotificationPrompt';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { toast } from 'sonner';
 
 /** Header name for passing user ID to API */
 const USER_ID_HEADER = 'x-user-id';
@@ -89,6 +90,7 @@ export function ChatThread({ id }: ChatThreadProps) {
         resume: true,
         onError: (error) => {
             console.error('[ChatThread] useChat error:', error.message);
+            toast.error('חלה שגיאה. נסו שוב או פתחו שיחה חדשה.');
         },
     });
 
