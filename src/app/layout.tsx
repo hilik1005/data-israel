@@ -1,100 +1,36 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
-import { ClerkProvider } from '@clerk/nextjs';
-import ConvexClientProvider from '@/context/ConvexClientProvider';
-import QueryClientProvider from '@/context/QueryClientProvider';
-import { UserProvider } from '@/context/UserContext';
-import { ThemeProvider } from '@/context/ThemeProvider';
-import { AppSidebar } from '@/components/navigation/AppSidebar';
-import { Toaster } from '@/components/ui/sonner';
-import { Analytics } from '@vercel/analytics/next';
-import { SpeedInsights } from '@vercel/speed-insights/next';
-
 import './globals.css';
 
 const geistSans = Geist({
-    variable: '--font-geist-sans',
-    subsets: ['latin'],
+  variable: '--font-geist-sans',
+  subsets: ['latin'],
 });
 
 const geistMono = Geist_Mono({
-    variable: '--font-geist-mono',
-    subsets: ['latin'],
+  variable: '--font-geist-mono',
+  subsets: ['latin'],
 });
 
-const VERSION = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8) ?? Date.now().toString();
+export const metadata: Metadata = {
+  title: 'חיפוש חכם - מסים',
+  description: 'חיפוש חכם בהנחיות, תקנות, הוראות ביצוע, חוזרים ותמציות החלטות מיסוי',
+};
 
-export async function generateMetadata(): Promise<Metadata> {
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://data-israel.org';
-    const title = 'דאטה ישראל';
-    const description =
-        'מערכת בינה מלאכותית לשאלות על ישראל, המחוברת למאגרי מידע ציבוריים רשמיים ומספקת תשובות עם שקיפות לגבי המקורות והנתונים שעליהם הן מבוססות.';
-    const ogImage = `/og.png?v=${VERSION}`;
-
-    return {
-        title,
-        description,
-        metadataBase: new URL(siteUrl),
-        openGraph: {
-            type: 'website',
-            url: siteUrl,
-            title,
-            description,
-            siteName: 'דאטה ישראל',
-            locale: 'he_IL',
-            images: [
-                {
-                    url: ogImage,
-                    width: 1200,
-                    height: 630,
-                    alt: 'סוכני המידע הציבורי - בינה מלאכותית למידע הפתוח של ישראל',
-                    type: 'image/png',
-                },
-            ],
-        },
-        twitter: {
-            card: 'summary_large_image',
-            title,
-            description,
-            images: [
-                {
-                    url: ogImage,
-                    alt: 'סוכני המידע הציבורי - AI למידע הפתוח של ישראל',
-                },
-            ],
-        },
-    };
-}
-
-export function generateViewport(): Viewport {
-    return {
-        themeColor: '#2d4b8e',
-    };
-}
+export const viewport: Viewport = {
+  themeColor: '#2d4b8e',
+};
 
 export default function RootLayout({
-    children,
+  children,
 }: Readonly<{
-    children: React.ReactNode;
+  children: React.ReactNode;
 }>) {
-    return (
-        <html lang='he' dir='rtl' suppressHydrationWarning>
-            <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-                <ClerkProvider>
-                    <ThemeProvider>
-                        <QueryClientProvider>
-                            <ConvexClientProvider>
-                                <UserProvider>
-                                    <AppSidebar>{children}</AppSidebar>
-                                </UserProvider>
-                            </ConvexClientProvider>
-                        </QueryClientProvider>
-                        <Toaster />
-                        <Analytics />
-                        <SpeedInsights />
-                    </ThemeProvider>
-                </ClerkProvider>
-            </body>
-        </html>
-    );
+  return (
+    <html lang="he" dir="rtl">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        {children}
+      </body>
+    </html>
+  );
 }
