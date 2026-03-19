@@ -66,16 +66,52 @@ const documents: DocItem[] = [
   },
   {
     id: 5,
-    title: 'הנחיה מקצועית - מעמ בעסקאות שירות',
+    title: 'הנחיה מקצועית - מע"מ בעסקאות שירות',
     type: 'הנחיה',
     year: 2024,
     date: '2024-11-07',
-    topic: 'מעמ',
-    summary: 'הנחיה מקצועית בנושא מעמ בעסקאות שירות.',
-    keywords: ['מעמ', 'מע"מ', 'vat', 'שירותים'],
+    topic: 'מע"מ',
+    summary: 'הנחיה מקצועית בנושא מע"מ בעסקאות שירות.',
+    keywords: ['מע"מ', 'מעמ', 'vat', 'שירותים'],
     source_url: '#',
     full_text: 'המסמך מסביר סיווג עסקאות, חבות מס, חריגים ודוגמאות יישומיות.',
   },
+  {
+    id: 6,
+    title: 'הנחיה מקצועית - תקנות שווי שימוש',
+    type: 'הנחיה',
+    year: 2023,
+    date: '2023-05-12',
+    topic: 'שווי שימוש',
+    summary: 'הנחיה בנושא שווי שימוש ברכב והשלכות מס.',
+    keywords: ['שווי שימוש', 'רכב', 'רכב צמוד'],
+    source_url: '#',
+    full_text: 'המסמך מפרט מצבים שונים, כללי חישוב והיבטי דיווח שוטפים.',
+  },
+  {
+    id: 7,
+    title: 'חוזר מקצועי - מוסד קבע',
+    type: 'חוזר',
+    year: 2024,
+    date: '2024-08-03',
+    topic: 'מיסוי בינלאומי',
+    summary: 'הבהרות בנושא מוסד קבע ופעילות זרה.',
+    keywords: ['מוסד קבע', 'permanent establishment', 'מיסוי בינלאומי'],
+    source_url: '#',
+    full_text: 'המסמך סוקר הגדרות, מבחנים רלוונטיים, דוגמאות ועמדת הרשות.',
+  },
+  {
+    id: 8,
+    title: 'תמצית החלטת מיסוי - מיזוג חברות',
+    type: 'תמצית החלטת מיסוי',
+    year: 2025,
+    date: '2025-02-18',
+    topic: 'מיזוגים',
+    summary: 'תמצית החלטה בנושא מיזוג חברות והעברת פעילות.',
+    keywords: ['מיזוג', 'החלטת מיסוי', 'רולינג', 'מיזוג חברות'],
+    source_url: '#',
+    full_text: 'המסמך מתאר את העובדות, התנאים והשלכות המס של המהלך.',
+  }
 ];
 
 const synonyms: Record<string, string[]> = {
@@ -83,9 +119,10 @@ const synonyms: Record<string, string[]> = {
   'רולינג': ['החלטת מיסוי', 'תמצית החלטת מיסוי'],
   'מחירי העברה': ['transfer pricing', 'cbc', 'cbcr'],
   'נקודות זיכוי': ['זיכוי ממס', 'ילדים'],
-  'מעמ': ['מע"מ', 'vat'],
   'מע"מ': ['מעמ', 'vat'],
+  'מעמ': ['מע"מ', 'vat'],
   'הוראת ביצוע': ['נוהל', 'הנחיה'],
+  'מוסד קבע': ['permanent establishment'],
 };
 
 function normalize(text: string) {
@@ -145,7 +182,10 @@ export default function Home() {
   const [yearFilter, setYearFilter] = useState('הכל');
 
   const types = ['הכל', ...Array.from(new Set(documents.map((d) => d.type)))];
-  const years = ['הכל', ...Array.from(new Set(documents.map((d) => String(d.year)))).sort((a, b) => Number(b) - Number(a))];
+  const years = [
+    'הכל',
+    ...Array.from(new Set(documents.map((d) => String(d.year)))).sort((a, b) => Number(b) - Number(a)),
+  ];
 
   const results = useMemo(() => {
     const terms = expandQuery(query);
@@ -159,25 +199,27 @@ export default function Home() {
   }, [query, typeFilter, yearFilter]);
 
   return (
-    <main className="min-h-screen bg-white text-slate-900" dir="rtl">
-      <div className="mx-auto max-w-6xl px-4 py-10">
-        <h1 className="text-3xl font-bold mb-2">חיפוש חכם במסמכי מס</h1>
-        <p className="text-slate-600 mb-8">
-          חיפוש בהנחיות, תקנות, הוראות ביצוע, חוזרים ותמציות החלטות מיסוי
-        </p>
+    <main style={styles.page}>
+      <div style={styles.container}>
+        <header style={styles.header}>
+          <h1 style={styles.title}>חיפוש חכם במסמכי מס</h1>
+          <p style={styles.subtitle}>
+            חיפוש בהנחיות, תקנות, הוראות ביצוע, חוזרים ותמציות החלטות מיסוי
+          </p>
+        </header>
 
-        <div className="grid gap-4 md:grid-cols-4 mb-8">
+        <section style={styles.filters}>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="חפש למשל: נקודות זיכוי, מחירי העברה, החלטת מיסוי"
-            className="md:col-span-2 rounded-xl border px-4 py-3"
+            style={styles.input}
           />
 
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="rounded-xl border px-4 py-3"
+            style={styles.select}
           >
             {types.map((type) => (
               <option key={type} value={type}>
@@ -189,7 +231,7 @@ export default function Home() {
           <select
             value={yearFilter}
             onChange={(e) => setYearFilter(e.target.value)}
-            className="rounded-xl border px-4 py-3"
+            style={styles.select}
           >
             {years.map((year) => (
               <option key={year} value={year}>
@@ -197,59 +239,188 @@ export default function Home() {
               </option>
             ))}
           </select>
-        </div>
+        </section>
 
-        <div className="mb-6 flex flex-wrap gap-2">
-          {['החלטת מיסוי', 'מחירי העברה', 'נקודות זיכוי', 'מע"מ', 'הוראת ביצוע'].map((term) => (
-            <button
-              key={term}
-              onClick={() => setQuery(term)}
-              className="rounded-full border px-3 py-1 text-sm hover:bg-slate-50"
-            >
+        <section style={styles.quickTags}>
+          {['החלטת מיסוי', 'מחירי העברה', 'נקודות זיכוי', 'מע"מ', 'הוראת ביצוע', 'מוסד קבע'].map((term) => (
+            <button key={term} onClick={() => setQuery(term)} style={styles.tagButton}>
               {term}
             </button>
           ))}
-        </div>
+        </section>
 
-        <div className="space-y-4">
+        <section style={styles.results}>
           {results.length === 0 ? (
-            <div className="rounded-2xl border p-6">לא נמצאו תוצאות</div>
+            <div style={styles.empty}>לא נמצאו תוצאות</div>
           ) : (
             results.map((doc) => (
-              <article key={doc.id} className="rounded-2xl border p-5 shadow-sm">
-                <div className="mb-3 flex flex-wrap gap-2 text-sm">
-                  <span className="rounded-full bg-slate-100 px-3 py-1">{doc.type}</span>
-                  <span className="rounded-full bg-slate-100 px-3 py-1">{doc.topic}</span>
-                  <span className="rounded-full bg-slate-100 px-3 py-1">{doc.year}</span>
+              <article key={doc.id} style={styles.card}>
+                <div style={styles.badges}>
+                  <span style={styles.badge}>{doc.type}</span>
+                  <span style={styles.badge}>{doc.topic}</span>
+                  <span style={styles.badge}>{doc.year}</span>
                 </div>
 
-                <h2 className="text-xl font-semibold mb-2">{doc.title}</h2>
-                <p className="text-slate-600 mb-3">{doc.summary}</p>
+                <h2 style={styles.cardTitle}>{doc.title}</h2>
+                <p style={styles.cardSummary}>{doc.summary}</p>
 
-                <div className="mb-3 flex flex-wrap gap-2">
+                <div style={styles.keywords}>
                   {doc.keywords.map((keyword) => (
-                    <span key={keyword} className="rounded-full border px-3 py-1 text-xs">
+                    <span key={keyword} style={styles.keyword}>
                       {keyword}
                     </span>
                   ))}
                 </div>
 
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-slate-500">{doc.date}</span>
-                  <a
-                    href={doc.source_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rounded-xl bg-slate-900 px-4 py-2 text-white"
-                  >
+                <div style={styles.cardFooter}>
+                  <span style={styles.date}>{doc.date}</span>
+                  <a href={doc.source_url} target="_blank" rel="noreferrer" style={styles.linkButton}>
                     פתח מקור
                   </a>
                 </div>
               </article>
             ))
           )}
-        </div>
+        </section>
       </div>
     </main>
   );
 }
+
+const styles: Record<string, React.CSSProperties> = {
+  page: {
+    minHeight: '100vh',
+    background: '#f8fafc',
+    color: '#0f172a',
+    direction: 'rtl',
+    fontFamily: 'Arial, sans-serif',
+  },
+  container: {
+    maxWidth: '1100px',
+    margin: '0 auto',
+    padding: '40px 16px',
+  },
+  header: {
+    marginBottom: '28px',
+  },
+  title: {
+    fontSize: '36px',
+    fontWeight: 700,
+    margin: 0,
+    marginBottom: '8px',
+  },
+  subtitle: {
+    fontSize: '16px',
+    color: '#475569',
+    margin: 0,
+  },
+  filters: {
+    display: 'grid',
+    gridTemplateColumns: '2fr 1fr 1fr',
+    gap: '12px',
+    marginBottom: '20px',
+  },
+  input: {
+    border: '1px solid #cbd5e1',
+    borderRadius: '12px',
+    padding: '14px 16px',
+    fontSize: '16px',
+    width: '100%',
+    boxSizing: 'border-box',
+  },
+  select: {
+    border: '1px solid #cbd5e1',
+    borderRadius: '12px',
+    padding: '14px 16px',
+    fontSize: '16px',
+    width: '100%',
+    background: '#fff',
+    boxSizing: 'border-box',
+  },
+  quickTags: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+    marginBottom: '24px',
+  },
+  tagButton: {
+    border: '1px solid #cbd5e1',
+    background: '#fff',
+    borderRadius: '999px',
+    padding: '8px 14px',
+    cursor: 'pointer',
+    fontSize: '14px',
+  },
+  results: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+  },
+  empty: {
+    border: '1px solid #e2e8f0',
+    background: '#fff',
+    borderRadius: '16px',
+    padding: '24px',
+  },
+  card: {
+    background: '#fff',
+    border: '1px solid #e2e8f0',
+    borderRadius: '18px',
+    padding: '20px',
+    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+  },
+  badges: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+    marginBottom: '12px',
+  },
+  badge: {
+    background: '#e2e8f0',
+    borderRadius: '999px',
+    padding: '6px 10px',
+    fontSize: '13px',
+  },
+  cardTitle: {
+    fontSize: '22px',
+    margin: 0,
+    marginBottom: '10px',
+  },
+  cardSummary: {
+    margin: 0,
+    marginBottom: '14px',
+    color: '#475569',
+    lineHeight: 1.6,
+  },
+  keywords: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+    marginBottom: '16px',
+  },
+  keyword: {
+    border: '1px solid #cbd5e1',
+    borderRadius: '999px',
+    padding: '5px 10px',
+    fontSize: '12px',
+    background: '#fff',
+  },
+  cardFooter: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '12px',
+  },
+  date: {
+    color: '#64748b',
+    fontSize: '14px',
+  },
+  linkButton: {
+    textDecoration: 'none',
+    background: '#0f172a',
+    color: '#fff',
+    borderRadius: '12px',
+    padding: '10px 14px',
+    fontSize: '14px',
+  },
+};
